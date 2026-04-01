@@ -4,6 +4,11 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [text, setText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [filter, setFilter] = useState("all");
+  
+  // DataTable-style sorting state
+  // sortConfig: { key: 'id' | 'content', direction: 'asc' | 'desc' }
+  const [sortConfig, setSortConfig] = useState({ key: 'id', direction: 'desc' });
 
   const API_URL = "http://127.0.0.1:5000/api/tasks";
 
@@ -11,7 +16,9 @@ function App() {
     try {
       const res = await fetch(API_URL);
       const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        setTasks(data);
+      }
     } catch (err) {
       console.error("Error fetching tasks:", err);
     }
@@ -24,7 +31,6 @@ function App() {
   const addTask = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-
     setIsProcessing(true);
     try {
       await fetch(API_URL, {
@@ -50,7 +56,29 @@ function App() {
     }
   };
 
-  // Professional Badge Styles
+  // Logic for sorting (DataTables Style)
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedTasks = (items) => {
+    let sortableItems = [...items];
+    sortableItems.sort((a, b) => {
+      if (a[sortConfig.key] < b[sortConfig.key]) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (a[sortConfig.key] > b[sortConfig.key]) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+    return sortableItems;
+  };
+
   const getBadgeStyle = (cat) => {
     const config = {
       urgent: { bg: '#FEE2E2', text: '#991B1B' },
@@ -62,9 +90,13 @@ function App() {
     return config[cat.toLowerCase()] || config.general;
   };
 
+  // Apply Filter then Sort
+  const processedTasks = getSortedTasks(
+    filter === "all" ? tasks : tasks.filter(t => t.category.toLowerCase() === filter.toLowerCase())
+  );
+
   return (
     <div style={styles.appContainer}>
-      {/* Sidebar Section */}
       <aside style={styles.sidebar}>
         <div style={styles.logo}>TaskAI <span style={styles.proTag}>PRO</span></div>
         <div style={styles.navItemActive}>Dashboard</div>
@@ -72,7 +104,6 @@ function App() {
         <div style={styles.navItem}>AI Analytics</div>
       </aside>
 
-      {/* Main Content Section */}
       <main style={styles.mainContent}>
         <div style={styles.header}>
           <h1 style={styles.title}>Smart Workflow</h1>
@@ -85,7 +116,7 @@ function App() {
             <input 
               value={text} 
               onChange={(e) => setText(e.target.value)} 
-              placeholder="e.g., 'Prepare the annual financial audit'..." 
+              placeholder="Describe your task..." 
               style={styles.input}
               disabled={isProcessing}
             />
@@ -95,36 +126,65 @@ function App() {
           </form>
         </div>
 
-        {/* Task Table Card */}
-        <div style={styles.card}>
+        {/* Filters */}
+        <div style={styles.filterBar}>
+          {['all', 'work', 'home', 'urgent', 'coding'].map(cat => (
+            <button 
+              key={cat}
+              onClick={() => setFilter(cat)}
+              style={{
+                ...styles.filterTab,
+                borderBottom: filter === cat ? '2px solid #2563EB' : '2px solid transparent',
+                color: filter === cat ? '#2563EB' : '#6B7280'
+              }}
+            >
+              {cat.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Task List Card with FIXED HEIGHT and INTERNAL SCROLL */}
+        <div style={styles.listCard}>
           <div style={styles.tableHeader}>
-            <span style={{flex: 2}}>Description</span>
-            <span style={{flex: 1, textAlign: 'center'}}>Classification</span>
-            <span style={{flex: 1, textAlign: 'right'}}>Action</span>
+            <span style={{flex: 2, cursor: 'pointer'}} onClick={() => requestSort('content')}>
+              Description {sortConfig.key === 'content' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+            </span>
+            <span style={{flex: 1, textAlign: 'center', cursor: 'pointer'}} onClick={() => requestSort('category')}>
+              Classification {sortConfig.key === 'category' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+            </span>
+            <span style={{flex: 1, textAlign: 'right', cursor: 'pointer'}} onClick={() => requestSort('createdAt')}>
+              Date {sortConfig.key === 'createdAt' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+            </span>
           </div>
-          <div style={styles.taskList}>
-            {tasks.map(t => {
+          
+          <div style={styles.scrollArea}>
+            {processedTasks.map(t => {
               const badge = getBadgeStyle(t.category);
               return (
                 <div key={t.id} style={styles.taskRow}>
-                  <span style={{flex: 2, color: '#1F2937'}}>{t.content}</span>
+                  <div style={{flex: 2}}>
+                    <div style={{color: '#1F2937', fontWeight: '500'}}>{t.content}</div>
+                    <div style={styles.timestamp}>
+                      Ref ID: #{t.id} • {t.createdAt ? new Date(t.createdAt).toLocaleString([], { 
+                        month: 'short', 
+                        day: 'numeric', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      }) : 'No date'}
+                    </div>
+                  </div>
                   <div style={{flex: 1, textAlign: 'center'}}>
-                    <span style={{
-                      ...styles.badge, 
-                      backgroundColor: badge.bg, 
-                      color: badge.text
-                    }}>
+                    <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.text }}>
                       {t.category.toUpperCase()}
                     </span>
                   </div>
                   <div style={{flex: 1, textAlign: 'right'}}>
-                    <button onClick={() => deleteTask(t.id)} style={styles.deleteBtn}>
-                      Remove
-                    </button>
+                    <button onClick={() => deleteTask(t.id)} style={styles.deleteBtn}>Remove</button>
                   </div>
                 </div>
               );
             })}
+            {processedTasks.length === 0 && <p style={styles.emptyMsg}>No tasks to display.</p>}
           </div>
         </div>
       </main>
@@ -132,26 +192,77 @@ function App() {
   );
 }
 
-// Professional CSS-in-JS Styles
 const styles = {
-  appContainer: { display: 'flex', minHeight: '100vh', backgroundColor: '#F9FAF8' },
-  sidebar: { width: '240px', backgroundColor: '#111827', color: '#FFF', padding: '30px 20px' },
-  logo: { fontSize: '22px', fontWeight: '800', marginBottom: '40px', letterSpacing: '-0.5px' },
-  proTag: { fontSize: '10px', backgroundColor: '#3B82F6', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle' },
-  navItem: { padding: '12px', color: '#9CA3AF', cursor: 'pointer', fontSize: '14px' },
+  appContainer: { display: 'flex', height: '100vh', backgroundColor: '#F9FAF8', overflow: 'hidden' }, // Added overflow hidden to prevent body scroll
+  sidebar: { 
+    width: '240px', 
+    backgroundColor: '#111827', 
+    color: '#FFF', 
+    padding: '30px 20px',
+    height: '100vh',
+    flexShrink: 0 
+  },
+  logo: { fontSize: '22px', fontWeight: '800', marginBottom: '40px' },
+  proTag: { fontSize: '10px', backgroundColor: '#3B82F6', padding: '2px 6px', borderRadius: '4px' },
+  navItem: { padding: '12px', color: '#9CA3AF', fontSize: '14px' },
   navItemActive: { padding: '12px', color: '#FFF', backgroundColor: '#1F2937', borderRadius: '8px', fontSize: '14px', marginBottom: '8px' },
-  mainContent: { flex: 1, padding: '40px 60px' },
-  header: { marginBottom: '30px' },
-  title: { fontSize: '32px', fontWeight: '700', color: '#111827', margin: 0 },
-  subtitle: { fontSize: '16px', color: '#6B7280', margin: '5px 0' },
-  card: { backgroundColor: '#FFF', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px' },
+  
+  mainContent: { 
+    flex: 1, 
+    padding: '40px 60px', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    height: '100vh', // Critical for child scroll to work
+    overflow: 'hidden' 
+  },
+  header: { marginBottom: '20px' },
+  title: { fontSize: '28px', fontWeight: '700', color: '#111827', margin: 0 },
+  subtitle: { fontSize: '14px', color: '#6B7280' },
+  
+  card: { backgroundColor: '#FFF', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' },
+  
+  // TASK LIST CARD FIX
+  listCard: { 
+    backgroundColor: '#FFF', 
+    borderRadius: '12px', 
+    padding: '0 24px 24px 24px', 
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
+    display: 'flex', 
+    flexDirection: 'column',
+    maxHeight: '60vh', // THIS FIXES THE HEIGHT
+    overflow: 'hidden' // Prevents the card itself from leaking
+  },
+  
+  scrollArea: { 
+    overflowY: 'auto', // ONLY the tasks will scroll
+    flex: 1,
+    paddingRight: '10px'
+  },
+
   form: { display: 'flex', gap: '15px' },
-  input: { flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '15px', outline: 'none' },
-  primaryBtn: { backgroundColor: '#2563EB', color: '#FFF', border: 'none', padding: '0 24px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
-  tableHeader: { display: 'flex', padding: '12px 0', borderBottom: '2px solid #F3F4F6', color: '#6B7280', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase' },
-  taskRow: { display: 'flex', padding: '18px 0', borderBottom: '1px solid #F3F4F6', alignItems: 'center', fontSize: '15px' },
-  badge: { padding: '4px 12px', borderRadius: '9999px', fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px' },
-  deleteBtn: { color: '#EF4444', border: 'none', background: 'none', cursor: 'pointer', fontWeight: '500' }
+  input: { flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB' },
+  primaryBtn: { backgroundColor: '#2563EB', color: '#FFF', border: 'none', padding: '0 20px', borderRadius: '8px', cursor: 'pointer' },
+  
+  filterBar: { display: 'flex', gap: '20px', marginBottom: '10px' },
+  filterTab: { background: 'none', border: 'none', padding: '10px 0', cursor: 'pointer', fontWeight: '600', fontSize: '12px' },
+  
+  tableHeader: { 
+    display: 'flex', 
+    padding: '20px 0 10px 0', 
+    borderBottom: '2px solid #F3F4F6', 
+    color: '#6B7280', 
+    fontSize: '12px', 
+    fontWeight: '700', 
+    position: 'sticky', 
+    top: 0, 
+    backgroundColor: '#FFF', 
+    zIndex: 1 
+  },
+  taskRow: { display: 'flex', padding: '16px 0', borderBottom: '1px solid #F3F4F6', alignItems: 'center' },
+  timestamp: { fontSize: '11px', color: '#9CA3AF', marginTop: '4px' },
+  badge: { padding: '4px 12px', borderRadius: '9999px', fontSize: '10px', fontWeight: '700' },
+  deleteBtn: { color: '#EF4444', border: 'none', background: 'none', cursor: 'pointer' },
+  emptyMsg: { textAlign: 'center', padding: '40px', color: '#9CA3AF' }
 };
 
 export default App;
