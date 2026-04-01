@@ -3,29 +3,29 @@
   "hostRequirements": {
     "cpus": 4
   },
-  "waitFor": "onCreateCommand",
-  "updateContentCommand": "npm install",
-  "postCreateCommand": "",
-  "postAttachCommand": {
-    "server": "npm start"
+  "features": {
+    "ghcr.io/devcontainers-extra/features/prisma:2": {},
+    "ghcr.io/devcontainers/features/python:1": {}
   },
+  "waitFor": "onCreateCommand",
+  "updateContentCommand": "npm install && pip install -r requirements.txt",
+  "postCreateCommand": "prisma generate",
+  // We use postStartCommand for everything to ensure it runs on every boot
+  "postStartCommand": "bash .devcontainer/start-services.sh",
   "customizations": {
     "codespaces": {
-      "openFiles": [
-        "src/App.jsx"
-      ]
+      "openFiles": ["src/App.jsx", "app.py"]
     }
   },
   "portsAttributes": {
     "3000": {
-      "label": "Application",
+      "label": "React Frontend",
       "onAutoForward": "openPreview"
+    },
+    "5000": { 
+      "label": "Flask Backend", 
+      "onAutoForward": "ignore" 
     }
   },
-  "forwardPorts": [
-    3000
-  ],
-  "features": {
-    "ghcr.io/devcontainers-extra/features/prisma:2": {}
-  }
+  "forwardPorts": [3000, 5000]
 }
