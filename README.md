@@ -7,4 +7,4 @@ CORS Configuration: Enabled wide CORS (*) to facilitate seamless communication b
 Stateless Connection Management: Implemented @app.before_request to ensure the Prisma engine is active, preventing "Database not found" errors during cold starts.
 
 
-<img src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MToxMzk1YTlkOWJjZjUwYTM5OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxN2M3MDQwMzM2ODowMDA2NGU3MmE0Y2VhOGRmEAI="/>
+<img src="https://lens.usercontent.google.com/banana?agsi=CmdnbG9iYWw6OjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAwZWI6MToxNjU5MjU3ZDJhODdjNmYyOjAwMDA1NWNmZWM3MDAyNmQ6MDAwMDAxN2M3MDQwMzM2ODowMDA2NGU3MmFmOWZjNDFmEAI="/>
